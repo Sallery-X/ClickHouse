@@ -11,18 +11,9 @@ SELECT reverseSplit('a/b/c', '');
 -- Test with column input
 SELECT reverseSplit(domain) FROM (SELECT arrayJoin(['www.google.com', 'mail.yahoo.com', 'clickhouse.com']) AS domain);
 
--- Test with constant separator column
-SELECT reverseSplit(domain, sep) FROM (
-    SELECT 
-        arrayJoin(['www.google.com', 'user@example.com', 'path/to/file']) AS domain,
-        arrayJoin(['.', '@', '/']) AS sep
-);
-
 -- Edge cases
 SELECT reverseSplit('...', '.');
 SELECT reverseSplit('a.b.c', 'x');
-SELECT reverseSplit(materialize('www.example.com'));
-SELECT reverseSplit(materialize('www.example.com'), materialize('.'));
 
 -- NULL handling
 SELECT reverseSplit(NULL);

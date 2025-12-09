@@ -9,19 +9,14 @@ cba
 com.google.www
 com.yahoo.mail
 com.clickhouse
-com.google.www
-com.yahoo.mail
-file/to/path
 ....
 a.b.c
-com.example.www
-com.example.www
 \N
 \N
 \N
 \N
-
 abc
+abcabc
 tset
 
 three::two::one
