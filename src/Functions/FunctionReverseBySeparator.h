@@ -20,16 +20,16 @@ namespace ErrorCodes
     extern const int LOGICAL_ERROR;
 }
 
-/** reverseSplit(string[, separator]) - splits a string into substrings separated by a string separator, starting from the end.
+/** reverseBySeparator(string[, separator]) - splits a string into substrings separated by a string separator, starting from the end.
   * This function processes the string from right to left, which is useful for parsing domain names,
   * file paths, or other hierarchical data where the rightmost parts are more significant.
   *
   * Examples:
-  * - reverseSplit('www.google.com') returns 'com.google.www'
-  * - reverseSplit('a/b/c', '/') returns 'c/b/a'
-  * - reverseSplit('x::y::z', '::') returns 'z::y::x'
-  * - reverseSplit('single') returns 'single'
-  * - reverseSplit('abcde', '') returns 'edcba' (reverses character order)
+  * - reverseBySeparator('www.google.com') returns 'com.google.www'
+  * - reverseBySeparator('a/b/c', '/') returns 'c/b/a'
+  * - reverseBySeparator('x::y::z', '::') returns 'z::y::x'
+  * - reverseBySeparator('single') returns 'single'
+  * - reverseBySeparator('abcde', '') returns 'edcba' (reverses character order)
   *
   * Arguments:
   * - string: The input string to split and reverse (String)
@@ -43,11 +43,11 @@ namespace ErrorCodes
   * - Support for both constant and variable separators
   * - Vectorized execution for processing multiple rows
   */
-class FunctionReverseSplit : public IFunction
+class FunctionReverseBySeparator : public IFunction
 {
 public:
-    static constexpr auto name = "reverseSplit";
-    static FunctionPtr create(ContextPtr) { return std::make_shared<FunctionReverseSplit>(); }
+    static constexpr auto name = "reverseBySeparator";
+    static FunctionPtr create(ContextPtr) { return std::make_shared<FunctionReverseBySeparator>(); }
 
     String getName() const override { return name; }
 

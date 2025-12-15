@@ -1,4 +1,4 @@
-#include <Functions/FunctionReverseSplit.h>
+#include <Functions/FunctionReverseBySeparator.h>
 #include <Functions/FunctionFactory.h>
 #include <Columns/ColumnString.h>
 #include <Columns/ColumnConst.h>
@@ -104,7 +104,7 @@ static size_t countCharacterOccurrences(const std::string_view & str, char ch)
 
 }
 
-DataTypePtr FunctionReverseSplit::getReturnTypeImpl(const ColumnsWithTypeAndName & arguments) const
+DataTypePtr FunctionReverseBySeparator::getReturnTypeImpl(const ColumnsWithTypeAndName & arguments) const
 {
     size_t number_of_arguments = arguments.size();
 
@@ -129,7 +129,7 @@ DataTypePtr FunctionReverseSplit::getReturnTypeImpl(const ColumnsWithTypeAndName
     return std::make_shared<DataTypeString>();
 }
 
-ColumnPtr FunctionReverseSplit::executeImpl(const ColumnsWithTypeAndName & arguments, const DataTypePtr & /*result_type*/, size_t input_rows_count) const
+ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName & arguments, const DataTypePtr & /*result_type*/, size_t input_rows_count) const
 {
     const ColumnPtr & column_haystack = arguments[0].column;
     const ColumnString * col_haystack = checkAndGetColumn<ColumnString>(column_haystack.get());
@@ -319,12 +319,12 @@ This function processes the string from right to left, which is useful for parsi
 file paths, or other hierarchical data where the rightmost parts are more significant.
 
 Examples:
-- reverseSplit('www.google.com') returns 'com.google.www'
-- reverseSplit('a/b/c', '/') returns 'c/b/a'
-- reverseSplit('x::y::z', '::') returns 'z::y::x'
+- reverseBySeparator('www.google.com') returns 'com.google.www'
+- reverseBySeparator('a/b/c', '/') returns 'c/b/a'
+- reverseBySeparator('x::y::z', '::') returns 'z::y::x'
 )";
 
-    FunctionDocumentation::Syntax syntax = "reverseSplit(string[, separator])";
+    FunctionDocumentation::Syntax syntax = "reverseBySeparator(string[, separator])";
     
     FunctionDocumentation::Arguments arguments = {
         {"string", "The input string to split and reverse.", {"String"}},
@@ -337,12 +337,12 @@ Examples:
     };
     
     FunctionDocumentation::Examples examples = {
-        {"Basic domain splitting", "SELECT reverseSplit('www.google.com')", "'com.google.www'"},
-        {"Path splitting", "SELECT reverseSplit('a/b/c', '/')", "'c/b/a'"},
-        {"Custom separator", "SELECT reverseSplit('x::y::z', '::')", "'z::y::x'"},
-        {"Edge case with dots", "SELECT reverseSplit('.a.b.', '.')", "'.b.a.'"},
-        {"Single element", "SELECT reverseSplit('single')", "'single'"},
-        {"Empty separator", "SELECT reverseSplit('abcde', '')", "'edcba'"}
+        {"Basic domain splitting", "SELECT reverseBySeparator('www.google.com')", "'com.google.www'"},
+        {"Path splitting", "SELECT reverseBySeparator('a/b/c', '/')", "'c/b/a'"},
+        {"Custom separator", "SELECT reverseBySeparator('x::y::z', '::')", "'z::y::x'"},
+        {"Edge case with dots", "SELECT reverseBySeparator('.a.b.', '.')", "'.b.a.'"},
+        {"Single element", "SELECT reverseBySeparator('single')", "'single'"},
+        {"Empty separator", "SELECT reverseBySeparator('abcde', '')", "'edcba'"}
     };
     
     FunctionDocumentation::IntroducedIn introduced_in = {24, 1};
@@ -350,7 +350,7 @@ Examples:
     
     FunctionDocumentation documentation = {description, syntax, arguments, returned_value, examples, introduced_in, category};
 
-    factory.registerFunction<FunctionReverseSplit>(documentation);
+    factory.registerFunction<FunctionReverseBySeparator>(documentation);
 }
 
 }
