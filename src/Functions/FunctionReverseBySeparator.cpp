@@ -6,6 +6,7 @@
 #include <Common/StringSearcher.h>
 #include <Common/Exception.h>
 #include <Common/StringUtils.h>
+#include <Common/PODArray.h>
 #include <base/MemorySanitizer.h>
 #include <IO/WriteHelpers.h>
 #include <string_view>
@@ -90,18 +91,6 @@ private:
     size_t next_separator_pos = 0;
 };
 
-/// Count occurrences of a character in a string
-static size_t countCharacterOccurrences(const std::string_view & str, char ch)
-{
-    size_t count = 0;
-    for (size_t i = 0; i < str.size(); ++i)
-    {
-        if (str.data()[i] == ch)
-            ++count;
-    }
-    return count;
-}
-
 }
 
 DataTypePtr FunctionReverseBySeparator::getReturnTypeImpl(const ColumnsWithTypeAndName & arguments) const
@@ -166,42 +155,13 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
     ColumnString::Offsets & res_offsets = col_res->getOffsets();
     res_offsets.resize(input_rows_count);
 
-    /// Pre-calculate total size to avoid multiple reallocations
     size_t total_size_estimate = 0;
+    for (size_t i = 0; i < input_rows_count; ++i)
     {
-        size_t res_chars_approx = 0;
-        for (size_t i = 0; i < input_rows_count; ++i)
-        {
-            const std::string_view haystack = col_haystack->getDataAt(i);
-            const std::string_view separator = separators ? separators[i] : std::string_view(default_separator.data(), default_separator.size());
-
-            if (separator.size() == 0)
-            {
-                /// Empty separator - reverse the entire string
-                res_chars_approx += haystack.size() + 1;
-                continue;
-            }
-
-            /// For performance, use a simple count for single-character separators
-            if (separator.size() == 1)
-            {
-                size_t sep_count = countCharacterOccurrences(haystack, separator.data()[0]);
-                size_t token_count = sep_count + 1;
-                res_chars_approx += haystack.size() + (token_count - 1) * separator.size() + 1;
-            }
-            else
-            {
-                /// For multi-character separators, use StringSearcher for accurate counting
-                ASCIICaseSensitiveStringSearcher searcher(reinterpret_cast<const UInt8*>(separator.data()), separator.size());
-                TokenSplitter<decltype(searcher)> splitter(haystack, searcher, separator.size());
-                size_t token_count = splitter.countTokens();
-                res_chars_approx += haystack.size() + (token_count - 1) * separator.size() + 1;
-            }
-        }
-        total_size_estimate = res_chars_approx;
+        total_size_estimate += col_haystack->getDataAt(i).size();
     }
-
-    res_data.reserve(total_size_estimate + input_rows_count); /// +1 for null terminator per row
+    
+    res_data.reserve(total_size_estimate);
 
     /// Main processing loop - vectorized execution
     for (size_t i = 0; i < input_rows_count; ++i)
@@ -229,7 +189,7 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
         if (separator.size() == 1)
         {
             const char sep_char = separator.data()[0];
-            std::vector<size_t> token_starts;
+            PODArray<size_t, 4096, Allocator<false>, 0, 0> token_starts;
             token_starts.reserve(haystack.size() / 2 + 2); /// Estimate
 
             size_t pos = 0;
@@ -298,15 +258,6 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
         }
 
         res_offsets[i] = res_data.size();
-
-        /// Safety check to prevent excessive memory usage
-        if (res_data.size() > total_size_estimate * 2)
-        {
-            /// Re-estimate and reserve more space if needed
-            size_t additional_reserve = (res_data.size() - total_size_estimate) * 2;
-            res_data.reserve(res_data.size() + additional_reserve);
-            total_size_estimate = res_data.size() + additional_reserve;
-        }
     }
 
     return col_res;
@@ -315,9 +266,10 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
 REGISTER_FUNCTION(ReverseBySeparator)
 {
     FunctionDocumentation::Description description = R"(
-Splits a string into an array of substrings separated by a string separator, starting from the end.
-This function processes the string from right to left, which is useful for parsing domain names,
-file paths, or other hierarchical data where the rightmost parts are more significant.
+Reverses the order of substrings in a string separated by a specified separator.
+This function splits the string by the separator, reverses the order of the resulting parts,
+and joins them back using the same separator. It is useful for parsing domain names,
+file paths, or other hierarchical data where you need to reverse the order of components.
 
 Examples:
 - reverseBySeparator('www.google.com') returns 'com.google.www'
@@ -328,8 +280,8 @@ Examples:
     FunctionDocumentation::Syntax syntax = "reverseBySeparator(string[, separator])";
     
     FunctionDocumentation::Arguments arguments = {
-        {"string", "The input string to split and reverse.", {"String"}},
-        {"separator", "The separator string. If not provided, splits by '.' (dot). Default: '.'", {"String"}}
+        {"string", "The input string to reverse the order of its parts.", {"String"}},
+        {"separator", "The separator string used to identify parts. If not provided, uses '.' (dot). Default: '.'", {"String"}}
     };
     
     FunctionDocumentation::ReturnedValue returned_value = {
@@ -338,8 +290,8 @@ Examples:
     };
     
     FunctionDocumentation::Examples examples = {
-        {"Basic domain splitting", "SELECT reverseBySeparator('www.google.com')", "'com.google.www'"},
-        {"Path splitting", "SELECT reverseBySeparator('a/b/c', '/')", "'c/b/a'"},
+        {"Basic domain reversal", "SELECT reverseBySeparator('www.google.com')", "'com.google.www'"},
+        {"Path reversal", "SELECT reverseBySeparator('a/b/c', '/')", "'c/b/a'"},
         {"Custom separator", "SELECT reverseBySeparator('x::y::z', '::')", "'z::y::x'"},
         {"Edge case with dots", "SELECT reverseBySeparator('.a.b.', '.')", "'.b.a.'"},
         {"Single element", "SELECT reverseBySeparator('single')", "'single'"},
