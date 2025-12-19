@@ -212,7 +212,6 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
         /// Handle empty input
         if (haystack.size() == 0)
         {
-            res_data.push_back(0);
             res_offsets[i] = res_data.size();
             continue;
         }
@@ -222,7 +221,6 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
         {
             for (size_t j = 0; j < haystack.size(); ++j)
                 res_data.push_back(haystack.data()[haystack.size() - 1 - j]);
-            res_data.push_back(0);
             res_offsets[i] = res_data.size();
             continue;
         }
@@ -235,11 +233,9 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
             token_starts.reserve(haystack.size() / 2 + 2); /// Estimate
 
             size_t pos = 0;
-            while (pos <= haystack.size())
+            while (pos < haystack.size())
             {
                 token_starts.push_back(pos);
-                if (pos == haystack.size())
-                    break;
 
                 /// Find next separator
                 size_t next_pos = pos;
@@ -249,8 +245,12 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
                 if (next_pos < haystack.size())
                     pos = next_pos + 1;
                 else
-                    pos = haystack.size() + 1;
+                    break; /// No more separators, we're done
             }
+            
+            /// Handle the case where the string ends with a separator
+            if (pos == haystack.size())
+                token_starts.push_back(pos);
 
             /// Write tokens in reverse order
             for (int64_t j = static_cast<int64_t>(token_starts.size()) - 1; j >= 0; --j)
@@ -260,9 +260,11 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
                     ? token_starts[j + 1] - 1
                     : haystack.size();
 
+                /// Add separator before token (except for the first token we write)
                 if (j < static_cast<int64_t>(token_starts.size()) - 1)
                     res_data.push_back(sep_char);
 
+                /// Add the token content
                 if (end > start)
                     res_data.insert(res_data.end(), haystack.data() + start, haystack.data() + end);
             }
@@ -295,7 +297,6 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
             }
         }
 
-        res_data.push_back(0); /// Null terminator
         res_offsets[i] = res_data.size();
 
         /// Safety check to prevent excessive memory usage
@@ -311,7 +312,7 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
     return col_res;
 }
 
-REGISTER_FUNCTION(ReverseSplit)
+REGISTER_FUNCTION(ReverseBySeparator)
 {
     FunctionDocumentation::Description description = R"(
 Splits a string into an array of substrings separated by a string separator, starting from the end.

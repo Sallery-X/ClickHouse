@@ -10,16 +10,6 @@
 
 namespace DB
 {
-
-namespace ErrorCodes
-{
-    extern const int ILLEGAL_TYPE_OF_ARGUMENT;
-    extern const int ILLEGAL_COLUMN;
-    extern const int NUMBER_OF_ARGUMENTS_DOESNT_MATCH;
-    extern const int BAD_ARGUMENTS;
-    extern const int LOGICAL_ERROR;
-}
-
 /** reverseBySeparator(string[, separator]) - splits a string into substrings separated by a string separator, starting from the end.
   * This function processes the string from right to left, which is useful for parsing domain names,
   * file paths, or other hierarchical data where the rightmost parts are more significant.
