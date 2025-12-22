@@ -125,30 +125,24 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
     if (!col_haystack)
         throw Exception(ErrorCodes::ILLEGAL_COLUMN, "First argument for function {} must be String", getName());
 
-    String default_separator = ".";
-    const std::string_view * separators = nullptr;
-    std::vector<std::string_view> separator_buffer;
+    String separator_str = ".";
+    std::string_view separator;
 
     if (arguments.size() == 2)
     {
         const ColumnPtr & column_separator = arguments[1].column;
         if (const ColumnConst * col_const_separator = checkAndGetColumn<ColumnConst>(column_separator.get()))
         {
-            default_separator = col_const_separator->getValue<String>();
-        }
-        else if (const ColumnString * col_separator = checkAndGetColumn<ColumnString>(column_separator.get()))
-        {
-            separator_buffer.reserve(input_rows_count);
-            for (size_t i = 0; i < input_rows_count; ++i)
-                separator_buffer.emplace_back(col_separator->getDataAt(i));
-            separators = separator_buffer.data();
+            separator_str = col_const_separator->getValue<String>();
         }
         else
         {
             throw Exception(ErrorCodes::ILLEGAL_COLUMN,
-                "Second argument for function {} must be constant String or ColumnString", getName());
+                "Second argument for function {} must be constant String", getName());
         }
     }
+    
+    separator = std::string_view(separator_str.data(), separator_str.size());
 
     auto col_res = ColumnString::create();
     ColumnString::Chars & res_data = col_res->getChars();
@@ -167,7 +161,7 @@ ColumnPtr FunctionReverseBySeparator::executeImpl(const ColumnsWithTypeAndName &
     for (size_t i = 0; i < input_rows_count; ++i)
     {
         const std::string_view haystack = col_haystack->getDataAt(i);
-        const std::string_view separator = separators ? separators[i] : std::string_view(default_separator.data(), default_separator.size());
+        // separator is already defined above as a string_view
 
         /// Handle empty input
         if (haystack.size() == 0)
